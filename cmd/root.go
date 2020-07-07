@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
+
+	"todo/app"
 )
 
 var rootCmd = &cobra.Command{
@@ -40,7 +42,16 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(errors.Wrap(err, "unable to read config from file"))
-		os.Exit(1)
+		fmt.Println("Unable to find config file, starting first web app setup...")
+		fileName, err := app.GenerateConfigFile()
+		if err != nil {
+			fmt.Println(errors.Wrap(err, "unable to generate config.yaml file"))
+			os.Exit(1)
+		}
+		viper.SetConfigFile(fileName)
+		if err := viper.ReadInConfig(); err != nil {
+			fmt.Println(errors.Wrap(err, "unable to read config from file"))
+			os.Exit(1)
+		}
 	}
 }

@@ -31,10 +31,9 @@ func (a *API) Init(r *chi.Mux) {
 
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Method("GET", "/", a.handler(func(w http.ResponseWriter, r *http.Request) error {
-		fmt.Fprintln(w, "Hello! This is TODO app!")
-		return nil
-	}))
+	r.Route("/api", func(r chi.Router) {
+		r.Mount("/todo", a.todoRouter())
+	})
 }
 
 func (a *API) handler(f func(http.ResponseWriter, *http.Request) error) http.Handler {

@@ -33,6 +33,10 @@ func (app *App) initDatabase() error {
 		if err := app.initSQLDatabase(dbConfig); err != nil {
 			return err
 		}
+	case "file":
+		if err := app.initFileDatabase(dbConfig); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("not supported db mode: %v", app.Config.DataMode)
 	}
@@ -46,5 +50,13 @@ func (app *App) initSQLDatabase(config *db.Config) (err error) {
 	}
 	app.Database.Migrate(
 		&model.Todo{})
+	return
+}
+
+func (app *App) initFileDatabase(config *db.Config) (err error) {
+	app.Database, err = db.NewFileDatabase(config)
+	if err != nil {
+		return
+	}
 	return
 }

@@ -37,6 +37,10 @@ func (app *App) initDatabase() error {
 		if err := app.initFileDatabase(dbConfig); err != nil {
 			return err
 		}
+	case "mongo":
+		if err := app.initMongoDatabase(dbConfig); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("not supported db mode: %v", app.Config.DataMode)
 	}
@@ -55,6 +59,14 @@ func (app *App) initSQLDatabase(config *db.Config) (err error) {
 
 func (app *App) initFileDatabase(config *db.Config) (err error) {
 	app.Database, err = db.NewFileDatabase(config)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (app *App) initMongoDatabase(config *db.Config) (err error) {
+	app.Database, err = db.NewMongoDatabase(config)
 	if err != nil {
 		return
 	}

@@ -9,4 +9,5 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.0
+	go.mongodb.org/mongo-driver v1.3.4
 )

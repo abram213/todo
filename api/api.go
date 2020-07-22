@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -43,8 +44,21 @@ func (a *API) handler(f func(http.ResponseWriter, *http.Request) error) http.Han
 		w.Header().Set("Content-Type", "application/json")
 
 		if err := f(w, r); err != nil {
-			fmt.Println(err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			if cerr, ok := err.(*app.CustomError); ok {
+				data, err := json.Marshal(cerr)
+				if err == nil {
+					w.WriteHeader(cerr.Code)
+					_, err = w.Write(data)
+				}
+
+				if err != nil {
+					fmt.Println(err)
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+				}
+			} else {
+				fmt.Println(err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
 		}
 	})
 }

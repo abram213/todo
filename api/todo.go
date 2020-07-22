@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"github.com/go-chi/chi"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"todo/app"
 	"todo/model"
 )
 
@@ -65,7 +67,10 @@ func (a *API) CreateTodo(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		return err
+		return &app.CustomError{
+			Message: errors.Wrap(err, "parse json error").Error(),
+			Code:    http.StatusBadRequest,
+		}
 	}
 
 	todo := &model.Todo{
@@ -105,7 +110,10 @@ func (a *API) UpdateTodo(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		return err
+		return &app.CustomError{
+			Message: errors.Wrap(err, "parse json error").Error(),
+			Code:    http.StatusBadRequest,
+		}
 	}
 
 	todo, err := a.App.UpdateTodo(uint(uid), input.Body)

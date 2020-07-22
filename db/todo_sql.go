@@ -1,7 +1,11 @@
 package db
 
 import (
+	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
+	"net/http"
+	"todo/errs"
 	"todo/model"
 )
 
@@ -10,12 +14,30 @@ func (db *SQLDatabase) CreateTodo(todo *model.Todo) (*model.Todo, error) {
 }
 
 func (db *SQLDatabase) UpdateTodo(todo *model.Todo) (*model.Todo, error) {
-	return todo, errors.Wrap(db.Save(&todo).Error, "unable to update todo")
+	if err := db.Save(&todo).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return nil, &errs.CustomError{
+				Message: fmt.Sprintf("cant find todo with id: %v", todo.ID),
+				Code:    http.StatusBadRequest,
+			}
+		}
+		return nil, errors.Wrap(err, "unable to update todo")
+	}
+	return todo, nil
 }
 
 func (db *SQLDatabase) GetTodo(id uint) (*model.Todo, error) {
 	var todo model.Todo
-	return &todo, errors.Wrap(db.First(&todo, id).Error, "unable to get todo")
+	if err := db.First(&todo, id).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return nil, &errs.CustomError{
+				Message: fmt.Sprintf("cant find todo with id: %v", todo.ID),
+				Code:    http.StatusBadRequest,
+			}
+		}
+		return nil, errors.Wrap(err, "unable to get todo")
+	}
+	return &todo, nil
 }
 
 func (db *SQLDatabase) GetTodos() (*[]model.Todo, error) {

@@ -3,9 +3,11 @@ package db
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"sort"
 	"time"
+	"todo/errs"
 	"todo/model"
 )
 
@@ -20,7 +22,10 @@ func (db *FileDatabase) CreateTodo(todo *model.Todo) (*model.Todo, error) {
 
 func (db *FileDatabase) UpdateTodo(todo *model.Todo) (*model.Todo, error) {
 	if _, ok := db.data.todos[todo.ID]; !ok {
-		return nil, fmt.Errorf("cant find todo with id: %v", todo.ID)
+		return nil, &errs.CustomError{
+			Message: fmt.Sprintf("cant find todo with id: %v", todo.ID),
+			Code:    http.StatusBadRequest,
+		}
 	}
 	todo.UpdatedAt = time.Now()
 	db.data.todos[todo.ID] = todo
@@ -30,7 +35,10 @@ func (db *FileDatabase) UpdateTodo(todo *model.Todo) (*model.Todo, error) {
 func (db *FileDatabase) GetTodo(id uint) (*model.Todo, error) {
 	todo, ok := db.data.todos[id]
 	if !ok {
-		return nil, fmt.Errorf("cant find todo with id: %v", todo.ID)
+		return nil, &errs.CustomError{
+			Message: fmt.Sprintf("cant find todo with id: %v", id),
+			Code:    http.StatusBadRequest,
+		}
 	}
 	return todo, nil
 }

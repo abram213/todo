@@ -2,10 +2,14 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"net/http"
 	"time"
+	"todo/errs"
 	"todo/model"
 )
 
@@ -31,6 +35,12 @@ func (db *MongoDatabase) UpdateTodo(todo *model.Todo) (*model.Todo, error) {
 		}},
 	}
 	if _, err := collection.UpdateOne(context.TODO(), filter, update); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, &errs.CustomError{
+				Message: fmt.Sprintf("cant find todo with id: %v", todo.ID),
+				Code:    http.StatusBadRequest,
+			}
+		}
 		return nil, errors.Wrap(err, "unable to update todo")
 	}
 	return todo, nil
@@ -41,6 +51,12 @@ func (db *MongoDatabase) GetTodo(id uint) (*model.Todo, error) {
 	collection := db.Database("todo").Collection("todos")
 	var todo model.Todo
 	if err := collection.FindOne(context.TODO(), filter).Decode(&todo); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, &errs.CustomError{
+				Message: fmt.Sprintf("cant find todo with id: %v", id),
+				Code:    http.StatusBadRequest,
+			}
+		}
 		return nil, errors.Wrap(err, "unable to get todo")
 	}
 	return &todo, nil

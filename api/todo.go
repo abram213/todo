@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"todo/app"
+	"todo/errs"
 	"todo/model"
 )
 
@@ -59,15 +59,15 @@ func (a *API) GetDoneTodos(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *API) CreateTodo(w http.ResponseWriter, r *http.Request) error {
-	var input todoInput
-
 	defer r.Body.Close()
+
+	var input todoInput
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		return &app.CustomError{
+		return &errs.CustomError{
 			Message: errors.Wrap(err, "parse json error").Error(),
 			Code:    http.StatusBadRequest,
 		}
@@ -88,6 +88,12 @@ func (a *API) GetTodo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if uid == 0 {
+		return &errs.ValidationError{
+			Message: "todo id should be > 0",
+			Code:    http.StatusBadRequest,
+		}
+	}
 	todo, err := a.App.GetTodo(uint(uid))
 	if err != nil {
 		return err
@@ -97,20 +103,26 @@ func (a *API) GetTodo(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *API) UpdateTodo(w http.ResponseWriter, r *http.Request) error {
+	defer r.Body.Close()
 	id := chi.URLParam(r, "id")
 	uid, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		return err
 	}
-	var input todoInput
+	if uid == 0 {
+		return &errs.ValidationError{
+			Message: "todo id should be > 0",
+			Code:    http.StatusBadRequest,
+		}
+	}
 
-	defer r.Body.Close()
+	var input todoInput
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		return &app.CustomError{
+		return &errs.CustomError{
 			Message: errors.Wrap(err, "parse json error").Error(),
 			Code:    http.StatusBadRequest,
 		}
@@ -130,6 +142,13 @@ func (a *API) DeleteTodo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if uid == 0 {
+		return &errs.ValidationError{
+			Message: "todo id should be > 0",
+			Code:    http.StatusBadRequest,
+		}
+	}
+
 	if err := a.App.DeleteTodo(uint(uid)); err != nil {
 		return err
 	}
@@ -142,6 +161,13 @@ func (a *API) DoneTodo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if uid == 0 {
+		return &errs.ValidationError{
+			Message: "todo id should be > 0",
+			Code:    http.StatusBadRequest,
+		}
+	}
+
 	todo, err := a.App.DoneTodo(uint(uid))
 	if err != nil {
 		return err
@@ -155,6 +181,12 @@ func (a *API) UndoneTodo(w http.ResponseWriter, r *http.Request) error {
 	uid, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		return err
+	}
+	if uid == 0 {
+		return &errs.ValidationError{
+			Message: "todo id should be > 0",
+			Code:    http.StatusBadRequest,
+		}
 	}
 	todo, err := a.App.UndoneTodo(uint(uid))
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"net/http"
 	"time"
+	"todo/errs"
 
 	"todo/app"
 )
@@ -44,10 +45,21 @@ func (a *API) handler(f func(http.ResponseWriter, *http.Request) error) http.Han
 		w.Header().Set("Content-Type", "application/json")
 
 		if err := f(w, r); err != nil {
-			if cerr, ok := err.(*app.CustomError); ok {
+			if cerr, ok := err.(*errs.CustomError); ok {
 				data, err := json.Marshal(cerr)
 				if err == nil {
 					w.WriteHeader(cerr.Code)
+					_, err = w.Write(data)
+				}
+
+				if err != nil {
+					fmt.Println(err)
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+				}
+			} else if verr, ok := err.(*errs.ValidationError); ok {
+				data, err := json.Marshal(verr)
+				if err == nil {
+					w.WriteHeader(verr.Code)
 					_, err = w.Write(data)
 				}
 

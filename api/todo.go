@@ -76,9 +76,11 @@ func (a *API) CreateTodo(w http.ResponseWriter, r *http.Request) error {
 	todo := &model.Todo{
 		Body: input.Body,
 	}
-	if _, err := a.App.CreateTodo(todo); err != nil {
+	nTodo, err := a.App.CreateTodo(todo)
+	if err != nil {
 		return err
 	}
+	json.NewEncoder(w).Encode(nTodo)
 	return nil
 }
 

@@ -1,0 +1,656 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">todo/api/api.go (84.6%)</option>
+				
+				<option value="file1">todo/api/config.go (100.0%)</option>
+				
+				<option value="file2">todo/api/todo.go (89.0%)</option>
+				
+				<option value="file3">todo/app/app.go (76.5%)</option>
+				
+				<option value="file4">todo/app/config.go (100.0%)</option>
+				
+				<option value="file5">todo/app/todo.go (86.4%)</option>
+				
+				<option value="file6">todo/app/yaml.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package api
+
+import (
+        "encoding/json"
+        "fmt"
+        "github.com/go-chi/chi"
+        "github.com/go-chi/chi/middleware"
+        "net/http"
+        "time"
+        "todo/db"
+        "todo/errs"
+
+        "todo/app"
+)
+
+type API struct {
+        App    *app.App
+        Config *Config
+}
+
+func New(a *app.App) (api *API, err error) <span class="cov8" title="1">{
+        api = &amp;API{App: a}
+        api.Config, err = InitConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return api, nil</span>
+}
+
+func (a *API) Init(r *chi.Mux) <span class="cov8" title="1">{
+        r.Use(middleware.RequestID)
+        r.Use(middleware.Logger)
+        r.Use(middleware.Recoverer)
+
+        r.Use(middleware.Timeout(60 * time.Second))
+
+        r.Route("/api", func(r chi.Router) </span><span class="cov8" title="1">{
+                r.Mount("/todo", a.todoRouter())
+        }</span>)
+}
+
+func (a *API) handler(f func(http.ResponseWriter, *http.Request) error) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                r.Body = http.MaxBytesReader(w, r.Body, 100*1024*1024)
+
+                w.Header().Set("Content-Type", "application/json")
+
+                if err := f(w, r); err != nil </span><span class="cov8" title="1">{
+                        if cerr, ok := err.(*errs.CustomError); ok </span><span class="cov8" title="1">{
+                                data, err := json.Marshal(cerr)
+                                if err == nil </span><span class="cov8" title="1">{
+                                        w.WriteHeader(cerr.Code)
+                                        _, err = w.Write(data)
+                                }</span>
+
+                                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                                        fmt.Println(err)
+                                        http.Error(w, "internal server error", http.StatusInternalServerError)
+                                }</span>
+                        } else<span class="cov8" title="1"> if verr, ok := err.(*errs.ValidationError); ok </span><span class="cov8" title="1">{
+                                data, err := json.Marshal(verr)
+                                if err == nil </span><span class="cov8" title="1">{
+                                        w.WriteHeader(verr.Code)
+                                        _, err = w.Write(data)
+                                }</span>
+
+                                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                                        fmt.Println(err)
+                                        http.Error(w, "internal server error", http.StatusInternalServerError)
+                                }</span>
+                        } else<span class="cov8" title="1"> {
+                                fmt.Println(err)
+                                http.Error(w, "internal server error", http.StatusInternalServerError)
+                        }</span>
+                }
+        })
+}
+
+func NewTestRouter(db *db.TestDatabase) (*chi.Mux, error) <span class="cov8" title="1">{
+        tApi, err := New(&amp;app.App{Database: db})
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">router := chi.NewRouter()
+        tApi.Init(router)
+        return router, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package api
+
+import "github.com/spf13/viper"
+
+type Config struct {
+        Port int
+}
+
+func InitConfig() (*Config, error) <span class="cov8" title="1">{
+        config := &amp;Config{
+                Port: viper.GetInt("Port"),
+        }
+        if config.Port == 0 </span><span class="cov8" title="1">{
+                config.Port = 4545
+        }</span>
+        <span class="cov8" title="1">return config, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package api
+
+import (
+        "encoding/json"
+        "github.com/go-chi/chi"
+        "github.com/pkg/errors"
+        "io/ioutil"
+        "net/http"
+        "strconv"
+        "todo/errs"
+        "todo/model"
+)
+
+func (a *API) todoRouter() http.Handler <span class="cov8" title="1">{
+        r := chi.NewRouter()
+        r.Method("GET", "/", a.handler(a.GetTodos))
+        r.Method("GET", "/active", a.handler(a.GetActiveTodos))
+        r.Method("GET", "/done", a.handler(a.GetDoneTodos))
+        r.Method("POST", "/", a.handler(a.CreateTodo))
+        r.Route("/{id:^[0-9]*$}", func(r chi.Router) </span><span class="cov8" title="1">{
+                r.Method("GET", "/", a.handler(a.GetTodo))
+                r.Method("PUT", "/", a.handler(a.UpdateTodo))
+                r.Method("DELETE", "/", a.handler(a.DeleteTodo))
+                r.Method("GET", "/done", a.handler(a.DoneTodo))
+                r.Method("GET", "/undone", a.handler(a.UndoneTodo))
+        }</span>)
+        <span class="cov8" title="1">return r</span>
+}
+
+type todoInput struct {
+        Body string `json:"body"`
+}
+
+func (a *API) GetTodos(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        todos, err := a.App.GetTodos()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todos)
+        return nil</span>
+}
+
+func (a *API) GetActiveTodos(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        todos, err := a.App.GetActiveTodos()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todos)
+        return nil</span>
+}
+
+func (a *API) GetDoneTodos(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        todos, err := a.App.GetDoneTodos()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todos)
+        return nil</span>
+}
+
+func (a *API) CreateTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        defer r.Body.Close()
+
+        var input todoInput
+        body, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := json.Unmarshal(body, &amp;input); err != nil </span><span class="cov8" title="1">{
+                return &amp;errs.CustomError{
+                        Message: errors.Wrap(err, "parse json error").Error(),
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+
+        <span class="cov8" title="1">todo := &amp;model.Todo{
+                Body: input.Body,
+        }
+        nTodo, err := a.App.CreateTodo(todo)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(nTodo)
+        return nil</span>
+}
+
+func (a *API) GetTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        uid, err := strconv.ParseUint(id, 10, 32)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if uid == 0 </span><span class="cov8" title="1">{
+                return &amp;errs.ValidationError{
+                        Message: "todo id should be &gt; 0",
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+        <span class="cov8" title="1">todo, err := a.App.GetTodo(uint(uid))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todo)
+        return nil</span>
+}
+
+func (a *API) UpdateTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        defer r.Body.Close()
+        id := chi.URLParam(r, "id")
+        uid, err := strconv.ParseUint(id, 10, 32)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if uid == 0 </span><span class="cov8" title="1">{
+                return &amp;errs.ValidationError{
+                        Message: "todo id should be &gt; 0",
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+
+        <span class="cov8" title="1">var input todoInput
+        body, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if err := json.Unmarshal(body, &amp;input); err != nil </span><span class="cov8" title="1">{
+                return &amp;errs.CustomError{
+                        Message: errors.Wrap(err, "parse json error").Error(),
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+
+        <span class="cov8" title="1">todo, err := a.App.UpdateTodo(uint(uid), input.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todo)
+        return nil</span>
+}
+
+func (a *API) DeleteTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        uid, err := strconv.ParseUint(id, 10, 32)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if uid == 0 </span><span class="cov8" title="1">{
+                return &amp;errs.ValidationError{
+                        Message: "todo id should be &gt; 0",
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+
+        <span class="cov8" title="1">if err := a.App.DeleteTodo(uint(uid)); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (a *API) DoneTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        uid, err := strconv.ParseUint(id, 10, 32)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if uid == 0 </span><span class="cov8" title="1">{
+                return &amp;errs.ValidationError{
+                        Message: "todo id should be &gt; 0",
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+
+        <span class="cov8" title="1">todo, err := a.App.DoneTodo(uint(uid))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todo)
+        return nil</span>
+}
+
+func (a *API) UndoneTodo(w http.ResponseWriter, r *http.Request) error <span class="cov8" title="1">{
+        id := chi.URLParam(r, "id")
+        uid, err := strconv.ParseUint(id, 10, 32)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if uid == 0 </span><span class="cov8" title="1">{
+                return &amp;errs.ValidationError{
+                        Message: "todo id should be &gt; 0",
+                        Code:    http.StatusBadRequest,
+                }
+        }</span>
+        <span class="cov8" title="1">todo, err := a.App.UndoneTodo(uint(uid))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">json.NewEncoder(w).Encode(todo)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package app
+
+import (
+        "fmt"
+        "todo/db"
+        "todo/model"
+)
+
+type App struct {
+        Config   *Config
+        Database db.DataLayer
+}
+
+func New(dataMode string) (app *App, err error) <span class="cov8" title="1">{
+        app = &amp;App{}
+        app.Config, err = InitConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">if dataMode == "" </span><span class="cov8" title="1">{
+                dataMode = "sql"
+        }</span>
+        <span class="cov8" title="1">if err := app.initDatabase(dataMode); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return app, nil</span>
+}
+
+func (app *App) initDatabase(dataMode string) error <span class="cov8" title="1">{
+        dbConfig, err := db.InitConfig(dataMode)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">switch dataMode </span>{
+        case "sql":<span class="cov8" title="1">
+                if err := app.initSQLDatabase(dbConfig); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        case "file":<span class="cov8" title="1">
+                if err := app.initFileDatabase(dbConfig); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        case "mongo":<span class="cov8" title="1">
+                if err := app.initMongoDatabase(dbConfig); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("not supported db mode: %v", dataMode)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (app *App) initSQLDatabase(config *db.Config) (err error) <span class="cov8" title="1">{
+        app.Database, err = db.NewSQLDatabase(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">app.Database.Migrate(
+                &amp;model.Todo{})
+        return</span>
+}
+
+func (app *App) initFileDatabase(config *db.Config) (err error) <span class="cov8" title="1">{
+        app.Database, err = db.NewFileDatabase(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (app *App) initMongoDatabase(config *db.Config) (err error) <span class="cov8" title="1">{
+        app.Database, err = db.NewMongoDatabase(config)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package app
+
+import (
+        "github.com/spf13/viper"
+)
+
+type Config struct {
+        DataMode string
+}
+
+func InitConfig() (*Config, error) <span class="cov8" title="1">{
+        config := &amp;Config{
+                DataMode: viper.GetString("DataMode"),
+        }
+        if config.DataMode == "" </span><span class="cov8" title="1">{
+                config.DataMode = "sql"
+        }</span>
+        <span class="cov8" title="1">return config, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package app
+
+import (
+        "time"
+        "todo/model"
+)
+
+func (app *App) CreateTodo(todo *model.Todo) (*model.Todo, error) <span class="cov8" title="1">{
+        return app.Database.CreateTodo(todo)
+}</span>
+
+func (app *App) UpdateTodo(id uint, body string) (*model.Todo, error) <span class="cov8" title="1">{
+        todo, err := app.GetTodo(id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">todo.Body = body
+        return app.Database.UpdateTodo(todo)</span>
+}
+
+func (app *App) GetTodo(id uint) (*model.Todo, error) <span class="cov8" title="1">{
+        return app.Database.GetTodo(id)
+}</span>
+
+func (app *App) GetActiveTodos() (*[]model.Todo, error) <span class="cov8" title="1">{
+        return app.Database.GetActiveTodos()
+}</span>
+
+func (app *App) GetDoneTodos() (*[]model.Todo, error) <span class="cov8" title="1">{
+        return app.Database.GetDoneTodos()
+}</span>
+
+func (app *App) GetTodos() (*[]model.Todo, error) <span class="cov8" title="1">{
+        return app.Database.GetTodos()
+}</span>
+
+func (app *App) DeleteTodo(id uint) error <span class="cov8" title="1">{
+        return app.Database.DeleteTodo(id)
+}</span>
+
+func (app *App) DoneTodo(id uint) (*model.Todo, error) <span class="cov8" title="1">{
+        todo, err := app.GetTodo(id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">todo.Done = true
+        todo.DoneTime = time.Now()
+        return app.Database.UpdateTodo(todo)</span>
+}
+
+func (app *App) UndoneTodo(id uint) (*model.Todo, error) <span class="cov8" title="1">{
+        todo, err := app.GetTodo(id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">todo.Done = false
+        return app.Database.UpdateTodo(todo)</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package app
+
+import (
+        "github.com/AlecAivazis/survey/v2"
+        "gopkg.in/yaml.v2"
+        "os"
+)
+
+type sConfig struct {
+        Port        int    `yaml:"Port"`
+        DataMode    string `yaml:"DataMode"`
+        DatabaseURI string `yaml:"DatabaseURI"`
+}
+
+func GenerateConfigFile() (string, error) <span class="cov0" title="0">{
+        var qs = []*survey.Question{
+                {
+                        Name: "Port",
+                        Prompt: &amp;survey.Input{
+                                Message: "Enter web application port:",
+                                Default: "3030",
+                        },
+                        Validate: survey.Required,
+                },
+                {
+                        Name: "DataMode",
+                        Prompt: &amp;survey.Select{
+                                Message: "Choose data mode:",
+                                Options: []string{"sql", "mongo", "file"},
+                                Default: "sql",
+                        },
+                        Validate: survey.Required,
+                },
+                {
+                        Name: "DatabaseURI",
+                        Prompt: &amp;survey.Input{
+                                Message: "Enter URI to database:",
+                                Default: ":memory:",
+                                Help:    "SQLite example: 'your_filename'.db\n Mongo example: mongodb+srv://{your_username}:{your_password}@{cluster_name}.0fggh.mongodb.net/{table_name}?retryWrites=true&amp;w=majority\n File example: 'path_to_file'",
+                        },
+                },
+        }
+
+        var answers sConfig
+
+        err := survey.Ask(qs, &amp;answers)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">fileName, err := createYamlConfig(answers)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return fileName, nil</span>
+}
+
+func createYamlConfig(config sConfig) (string, error) <span class="cov0" title="0">{
+        fileName := "config.yaml"
+        mConfig, err := yaml.Marshal(&amp;config)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">file, err := os.Create(fileName)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">defer file.Close()
+        if _, err := file.Write(mConfig); err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return fileName, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

@@ -1,29 +1,15 @@
 package test
 
 import (
-	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"todo/api"
-	"todo/app"
-	"todo/db"
 )
 
-func NewTestRouter(db *db.TestDatabase) (*chi.Mux, error) {
-	tApi, err := api.New(&app.App{Database: db})
-	if err != nil {
-		return nil, err
-	}
-	router := chi.NewRouter()
-	tApi.Init(router)
-	return router, nil
-}
-
-func testRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, []byte, error) {
+func TestRequest(t *testing.T, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, []byte, error) {
 	req, err := http.NewRequest(method, ts.URL+path, body)
 	if err != nil {
 		return nil, []byte(""), errors.Wrap(err, "err in creating request")

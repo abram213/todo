@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"net/http"
 	"time"
+	"todo/db"
 	"todo/errs"
 
 	"todo/app"
@@ -73,4 +74,14 @@ func (a *API) handler(f func(http.ResponseWriter, *http.Request) error) http.Han
 			}
 		}
 	})
+}
+
+func NewTestRouter(db *db.TestDatabase) (*chi.Mux, error) {
+	tApi, err := New(&app.App{Database: db})
+	if err != nil {
+		return nil, err
+	}
+	router := chi.NewRouter()
+	tApi.Init(router)
+	return router, nil
 }

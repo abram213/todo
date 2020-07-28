@@ -11,24 +11,27 @@ type App struct {
 	Database db.DataLayer
 }
 
-func New() (app *App, err error) {
+func New(dataMode string) (app *App, err error) {
 	app = &App{}
 	app.Config, err = InitConfig()
 	if err != nil {
 		return nil, err
 	}
-	if err := app.initDatabase(); err != nil {
+	if dataMode == "" {
+		dataMode = "sql"
+	}
+	if err := app.initDatabase(dataMode); err != nil {
 		return nil, err
 	}
 	return app, nil
 }
 
-func (app *App) initDatabase() error {
-	dbConfig, err := db.InitConfig()
+func (app *App) initDatabase(dataMode string) error {
+	dbConfig, err := db.InitConfig(dataMode)
 	if err != nil {
 		return err
 	}
-	switch app.Config.DataMode {
+	switch dataMode {
 	case "sql":
 		if err := app.initSQLDatabase(dbConfig); err != nil {
 			return err
@@ -42,7 +45,7 @@ func (app *App) initDatabase() error {
 			return err
 		}
 	default:
-		return fmt.Errorf("not supported db mode: %v", app.Config.DataMode)
+		return fmt.Errorf("not supported db mode: %v", dataMode)
 	}
 	return nil
 }

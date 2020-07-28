@@ -14,7 +14,7 @@ var migrateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		refresh, _ := cmd.Flags().GetBool("refresh")
 
-		a, err := app.New()
+		a, err := app.New("")
 		if err != nil {
 			return err
 		}

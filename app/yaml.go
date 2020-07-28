@@ -55,12 +55,13 @@ func GenerateConfigFile() (string, error) {
 }
 
 func createYamlConfig(config sConfig) (string, error) {
+	fileName := "config.yaml"
 	mConfig, err := yaml.Marshal(&config)
 	if err != nil {
 		return "", err
 	}
 
-	file, err := os.Create("config.yaml")
+	file, err := os.Create(fileName)
 	if err != nil {
 		return "", err
 	}
@@ -68,5 +69,5 @@ func createYamlConfig(config sConfig) (string, error) {
 	if _, err := file.Write(mConfig); err != nil {
 		return "", err
 	}
-	return "config.yaml", nil
+	return fileName, nil
 }

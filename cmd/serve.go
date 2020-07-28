@@ -52,7 +52,7 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serves the app",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		app, err := app.New()
+		app, err := app.New("")
 		if err != nil {
 			return err
 		}
